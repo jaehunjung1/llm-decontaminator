@@ -2,17 +2,16 @@ import argparse
 import json
 
 
-def show(database, mode="all"):
-
+def show(database):
     for each in database:
-        test_case = each["test"]
-        for i, train_case in enumerate(each["train"]):
+        train_case = each["train"]
+        for i, test_case in enumerate(each["test"]):
             if each["results"][i]:
                 print(f"Test case:\n{test_case}\n")
                 print(f"Train case:\n{train_case}\n")
 
     rephrase_num = sum([1 if True in each["results"] else 0 for each in database])
-    print(f"Rephrase num: {rephrase_num}")
+    print(f"Rephrase num: {rephrase_num} / {len(database)}")
 
 
 if __name__ == "__main__":

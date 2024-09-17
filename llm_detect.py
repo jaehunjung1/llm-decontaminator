@@ -4,19 +4,27 @@ import json
 import os
 import time
 
+import ipdb
+import openai
 from openai import OpenAI
+from tqdm import tqdm
 
 from detect_instruct import datatype_to_instruct
 
-client = OpenAI()
 
-def check_openai_key():
-    if not "OPENAI_API_KEY" in os.environ:
-        raise Exception("Please set your OPENAI_API_KEY environment variable.")
+def set_openai_api_key():
+    if not (api_key := os.getenv("OPENAI_API_KEY")):
+        api_key = open(f"/gscratch/xlab/jaehunj/OPENAI_API_KEYS/xlab.distillation", "r").read().strip()
+        os.environ["OPENAI_API_KEY"] = api_key
+
+    openai.api_key = api_key
+    return api_key
+
+
+client = OpenAI(api_key=set_openai_api_key())
 
 
 def detect_contamination(model, question1, question2, instruct):
-
     retries = 0
     while retries < 30:
         try:
@@ -51,14 +59,13 @@ def detect_contamination(model, question1, question2, instruct):
 
 
 def llm_detect(model, database, output_path, instruct, max_workers=32):
-    
     results = []
     futures = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         for i, pairs in enumerate(database):
-            test_case = pairs["test"]
+            test_case = pairs["train"]
             case_results = []
-            for train_case in pairs["train"]:
+            for train_case in pairs["test"]:
                 future = executor.submit(detect_contamination, model, test_case, train_case, instruct)
                 case_results.append(future)
             futures.append(case_results)
@@ -76,6 +83,25 @@ def llm_detect(model, database, output_path, instruct, max_workers=32):
     return database
 
 
+def llm_detect_faster(model, database, output_path, instruct, max_workers=32):
+    with tqdm(total=len(database)) as pbar:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(
+                detect_contamination, model, pair["test"][0], pair["train"], instruct
+            ): pair for pair in database}
+
+            results = []
+            for future in concurrent.futures.as_completed(futures):
+                pair = futures[future]
+                pair["results"] = [future.result()]
+                results.append(pair)
+                pbar.update(1)
+
+    with open(output_path, "w") as f:
+        for each in results:
+            f.write(json.dumps(each) + "\n")
+
+    return database
 
 
 if __name__ == "__main__":
