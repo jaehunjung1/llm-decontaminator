@@ -9,6 +9,7 @@ import random
 
 import openai
 import pandas as pd
+from datasets import load_dataset
 from sentence_transformers import SentenceTransformer, util
 
 
@@ -16,11 +17,25 @@ def read_dataset(r_path, data_type):
     print(f"Reading {r_path}...")
 
     if data_type == "nli":
+        if r_path in ["Jaehun/data-diversity-nli-ood-test", "Jaehun/data-diversity-nli-ood-test-v2"]:
+            dataset = list(load_dataset(r_path)["test"])
+        else:
+            with jsonlines.open(r_path) as f:
+                dataset = list(f)
+
+        for sample in dataset:
+            sample["text"] = f"""Premise: {sample["premise"]}\nHypothesis: {sample["hypothesis"]}\nLabel: {sample["label"]}"""
+
+    elif data_type == "math":
         with jsonlines.open(r_path) as f:
             dataset = list(f)
 
         for sample in dataset:
-            sample["text"] = f"""Premise: {sample["premise"]}\nHypothesis: {sample["hypothesis"]}\nLabel: {sample["label"]}"""
+            sample["text"] = sample["problem"]
+
+            if "id" not in sample and "problem_id" in sample:
+                sample["id"] = sample["problem_id"]
+
     else:
         raise NotImplementedError
 

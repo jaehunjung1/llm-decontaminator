@@ -12,9 +12,13 @@ from show_samples import show
 def parse_args():
     args = Namespace()
 
-    args.train_path = "../targeted-diversification-internal-internal/sentence-nli/data/filtered/bigbench.test.Llama-3.1-70B-generated.1.filtered.jsonl"
-    args.test_path = "../targeted-diversification-internal-internal/sentence-nli/data/preprocessed/bigbench.test.preprocessed.jsonl"
-    args.output_path = Path("./data/database/db-bigbench.test.Llama-3.1-70B-generated.1.filtered.jsonl")
+    args.train_path = "../targeted-diversification-internal-internal/math-reasoning/data/filtered/competition_math.test.problems.ngram-filtered.jsonl"
+    args.test_path = "../targeted-diversification-internal/math-reasoning/data/preprocessed/competition_math.test.jsonl"
+    args.output_path = Path("./data/database/math-reasoning/db-competition_math.test.problems.ngram-filtered.jsonl")
+
+    # args.train_path = "../targeted-diversification-internal/sentence-nli/data/generated/seed.wanli-ood/20240928-merged.filtered.jsonl"
+    # args.test_path = "Jaehun/data-diversity-nli-ood-test-v2"
+    # args.output_path = Path("./data/database/db-20240928-merged.filtered.jsonl")
 
     assert not args.output_path.exists(), f"{args.output_path} already exists."
 
@@ -23,9 +27,10 @@ def parse_args():
     args.batch_size = 32
     args.device = "cuda:0"
 
-    args.model = "gpt-4o-mini-2024-07-18"
-    args.data_type = 'nli'
-    args.max_workers = 3
+    # args.model = "gpt-4o-mini-2024-07-18"
+    args.model = "meta-llama/Meta-Llama-3.1-70B-Instruct"
+    args.data_type = 'math'
+    args.max_workers = 5
 
     return args
 

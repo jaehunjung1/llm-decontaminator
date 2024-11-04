@@ -21,10 +21,15 @@ def set_openai_api_key():
     return api_key
 
 
-client = OpenAI(api_key=set_openai_api_key())
+def set_avior_api_key():
+    if not (api_key := os.getenv("AVIOR_API_KEY")):
+        api_key = open(f"/gscratch/xlab/jaehunj/AVIOR_API_KEY/test", "r").read().strip()
+        os.environ["AVIOR_API_KEY"] = api_key
+
+    return api_key
 
 
-def detect_contamination(model, question1, question2, instruct):
+def detect_contamination(client, model, question1, question2, instruct):
     retries = 0
     while retries < 30:
         try:
@@ -84,10 +89,17 @@ def llm_detect(model, database, output_path, instruct, max_workers=32):
 
 
 def llm_detect_faster(model, database, output_path, instruct, max_workers=32):
+    if "Llama" in model:
+        client = openai.Client(
+            base_url="http://avior.mlfoundry.com/live-inference/v1", api_key=set_avior_api_key()
+        )
+    else:
+        client = openai.Client(api_key=set_openai_api_key())
+
     with tqdm(total=len(database)) as pbar:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {executor.submit(
-                detect_contamination, model, pair["test"][0], pair["train"], instruct
+                detect_contamination, client, model, pair["test"][0], pair["train"], instruct
             ): pair for pair in database}
 
             results = []
@@ -115,7 +127,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    check_openai_key()
+    set_openai_api_key()
 
     model = args.model
     database_path = args.database_path
