@@ -1,5 +1,6 @@
 import argparse
 import json
+from pathlib import Path
 
 import ipdb
 import jsonlines
@@ -63,41 +64,63 @@ def top_k_similarity(train_embs, test_embs, top_k):
 
 
 def build_database(model, train_path, test_path, output_path, data_type, top_k=1, batch_size=32, device=None):
-    train_cases = read_dataset(train_path, data_type)
-    test_cases = read_dataset(test_path, data_type)
-    train_embs = bert_encode(model, [sample["text"] for sample in train_cases], batch_size=batch_size, device=device)
-    test_embs = bert_encode(model, [sample["text"] for sample in test_cases], batch_size=batch_size, device=device)
-    top_k_indices = top_k_similarity(train_embs, test_embs, top_k)
+    if Path(output_path).exists():
+        print(f"{output_path} already exists, loading database...")
+        with jsonlines.open(output_path) as f:
+            db = list(f)
 
-    db = []
+    else:
+        print(f"Creating new database in {output_path}...")
 
-    for i, train_case in enumerate(train_cases):
-        top_k_cases = [test_cases[index] for index in top_k_indices[i]]
-        db.append({
-            "train": train_case['text'],
-            "test": [sample['text'] for sample in top_k_cases],
-            "train_id": train_case['id'],
-            "test_ids": [sample['id'] for sample in top_k_cases],
-        })
+        train_cases = read_dataset(train_path, data_type)
+        test_cases = read_dataset(test_path, data_type)
+        train_embs = bert_encode(model, [sample["text"] for sample in train_cases], batch_size=batch_size, device=device)
+        test_embs = bert_encode(model, [sample["text"] for sample in test_cases], batch_size=batch_size, device=device)
+        top_k_indices = top_k_similarity(train_embs, test_embs, top_k)
 
-    with open(output_path, "w") as f:
-        for each in db:
-            f.write(json.dumps(each) + "\n")
+        db = []
+
+        for i, train_case in enumerate(train_cases):
+            top_k_cases = [test_cases[index] for index in top_k_indices[i]]
+            db.append({
+                "train": train_case['text'],
+                "test": [sample['text'] for sample in top_k_cases],
+                "train_id": train_case['id'],
+                "test_ids": [sample['id'] for sample in top_k_cases],
+            })
+
+        with open(output_path, "w") as f:
+            for each in db:
+                f.write(json.dumps(each) + "\n")
 
     return db
 
 
-if __name__ == "__main__":
+def parse_args():
+    args = argparse.Namespace()
 
-    parser = argparse.ArgumentParser(description='Build database of top-k similar cases')
-    parser.add_argument('--train_path', type=str, required=True, help='Path to train cases')
-    parser.add_argument('--test_path', type=str, required=True, help='Path to test cases')
-    parser.add_argument('--output_path', type=str, required=True, help='Path to output database')
-    parser.add_argument('--bert-model', type=str, default='multi-qa-MiniLM-L6-cos-v1', help='Path to sentence transformer model')
-    parser.add_argument('--top_k', type=int, default=1, help='Number of top-k similar cases to retrieve')
-    parser.add_argument('--batch_size', type=int, default=32, help='Batch size for encoding')
-    parser.add_argument('--device', type=str, default=None, help='Device to use for encoding (e.g. "cuda:0")')
-    args = parser.parse_args()
+    args.train_path = "../targeted-diversification-internal-internal/math-reasoning/data/filtered/aqua_rat.test.1.problems.ngram-filtered.jsonl"
+    args.test_path = "../targeted-diversification-internal/math-reasoning/data/preprocessed/aqua_rat.test.jsonl"
+    args.output_path = Path("./data/database/math-reasoning/db-aqua_rat.test.1.problems.ngram-filtered.jsonl")
+
+    # args.train_path = "../targeted-diversification-internal/sentence-nli/data/generated/seed.wanli-ood/20240928-merged.filtered.jsonl"
+    # args.test_path = "Jaehun/data-diversity-nli-ood-test-v2"
+    # args.output_path = Path("./data/database/db-20240928-merged.filtered.jsonl")
+
+    assert not args.output_path.exists(), f"{args.output_path} already exists."
+
+    args.bert_model = "multi-qa-MiniLM-L6-cos-v1"
+    args.top_k = 1
+    args.batch_size = 32
+    args.device = "cuda:0"
+
+    args.data_type = 'math'
+
+    return args
+
+
+if __name__ == "__main__":
+    args = parse_args()
 
     model = SentenceTransformer(args.bert_model)
-    build_database(model, args.train_path, args.test_path, args.output_path, args.top_k, args.batch_size, args.device)
+    build_database(model, args.train_path, args.test_path, args.output_path, args.data_type, args.top_k, args.batch_size, args.device)

@@ -12,15 +12,13 @@ from show_samples import show
 def parse_args():
     args = Namespace()
 
-    args.train_path = "../targeted-diversification-internal-internal/math-reasoning/data/filtered/competition_math.test.problems.ngram-filtered.jsonl"
-    args.test_path = "../targeted-diversification-internal/math-reasoning/data/preprocessed/competition_math.test.jsonl"
-    args.output_path = Path("./data/database/math-reasoning/db-competition_math.test.problems.ngram-filtered.jsonl")
+    args.train_path = "../targeted-diversification-internal-internal/math-reasoning/data/filtered/aqua_rat.test.1.problems.ngram-filtered.jsonl"
+    args.test_path = "../targeted-diversification-internal/math-reasoning/data/preprocessed/aqua_rat.test.jsonl"
+    args.output_path = Path("./data/database/math-reasoning/db-aqua_rat.test.1.problems.ngram-filtered.jsonl")
 
     # args.train_path = "../targeted-diversification-internal/sentence-nli/data/generated/seed.wanli-ood/20240928-merged.filtered.jsonl"
     # args.test_path = "Jaehun/data-diversity-nli-ood-test-v2"
     # args.output_path = Path("./data/database/db-20240928-merged.filtered.jsonl")
-
-    assert not args.output_path.exists(), f"{args.output_path} already exists."
 
     args.bert_model = "multi-qa-MiniLM-L6-cos-v1"
     args.top_k = 1
@@ -37,8 +35,6 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-
-    set_openai_api_key()
 
     bert_model = SentenceTransformer(args.bert_model)
     database = build_database(bert_model, args.train_path, args.test_path, args.output_path, args.data_type, args.top_k, args.batch_size, args.device)

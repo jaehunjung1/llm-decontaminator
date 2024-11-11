@@ -3,6 +3,7 @@ import concurrent.futures
 import json
 import os
 import time
+from pathlib import Path
 
 import ipdb
 import openai
@@ -23,7 +24,19 @@ def set_openai_api_key():
 
 def set_avior_api_key():
     if not (api_key := os.getenv("AVIOR_API_KEY")):
-        api_key = open(f"/gscratch/xlab/jaehunj/AVIOR_API_KEY/test", "r").read().strip()
+        if Path(f"/home/lustre/api_keys/AVIOR_API_KEY/test").exists():
+            directory = Path(f"/home/lustre/api_keys/AVIOR_API_KEY/test")
+
+        elif Path(f"/lustre/fsw/portfolios/llmservice/users/jaehunj/api_keys/AVIOR_API_KEY/test").exists():
+            directory = Path("/lustre/fs1/portfolios/llmservice/users/jaehunj/api_keys/AVIOR_API_KEY/test")
+
+        elif Path(f"/gscratch/xlab/jaehunj/AVIOR_API_KEY/test").exists():
+            directory = Path(f"/gscratch/xlab/jaehunj/AVIOR_API_KEY/test")
+
+        else:
+            raise FileNotFoundError
+
+        api_key = open(directory, "r").read().strip()
         os.environ["AVIOR_API_KEY"] = api_key
 
     return api_key
